@@ -101,7 +101,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(std::time::Duration::from_secs(0))
         .as_secs();
 
-    render_buffer.save(format!("output/render-{timestamp}.png"))?;
+    render_buffer.save(format!("output/render-final-scene-1-{timestamp}.png"))?;
     render_buffer.save("output/latest.png")?;
 
     Ok(())
