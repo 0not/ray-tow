@@ -1,9 +1,13 @@
 use indicatif::ParallelProgressIterator;
 use itertools::iproduct;
+use rand::thread_rng;
 use rayon::prelude::*;
 
+use crate::hit_record::Hittable;
+use crate::raw_image_buffer::RawImageBuffer;
+use crate::ray::Ray;
 use crate::vectors::{random_in_unit_disc, sample_square};
-use crate::{raw_image_buffer::RawImageBuffer, ray::Hittable, ray::Ray, Color, Vec3};
+use crate::{Color, Vec3};
 
 #[derive(Default, Debug)]
 pub struct Camera {
@@ -115,7 +119,8 @@ impl Camera {
     }
 
     fn create_ray(&self, x: u32, y: u32) -> Ray {
-        let offset = sample_square();
+        let mut rng = thread_rng();
+        let offset = sample_square(&mut rng);
 
         let pixel_sample = self.pixel00_loc
             + (x as f64 + offset.x) * self.pixel_delta_u
@@ -124,7 +129,7 @@ impl Camera {
         let origin = if self.f_stop.is_none() {
             self.position
         } else {
-            let defocus = random_in_unit_disc();
+            let defocus = random_in_unit_disc(&mut rng);
             self.position + defocus.x * self.defocus_disk_u + defocus.y * self.defocus_disk_v
         };
         let direction = pixel_sample - origin;

@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use crate::{Vec2, Vec3};
 use rand::distributions::Standard;
-use rand::{thread_rng, Rng};
+use rand::Rng;
 use rand_distr::{Distribution, UnitDisc, UnitSphere};
 
 pub fn refract(uv: Vec3, normal: Vec3, n1_over_n2: f64) -> Vec3 {
@@ -12,20 +12,18 @@ pub fn refract(uv: Vec3, normal: Vec3, n1_over_n2: f64) -> Vec3 {
     r_out_perp + r_out_parallel
 }
 
-pub fn sample_square() -> Vec2 {
-    let mut rng = thread_rng();
+pub fn sample_square(rng: &mut impl Rng) -> Vec2 {
     let vec: Vec2 = rng.sample(Standard);
     vec - 0.5
 }
 
-pub fn random_unit_vector() -> Vec3 {
-    let mut rng = thread_rng();
-    let unit_sphere = UnitSphere.sample(&mut rng);
+pub fn random_unit_vector(rng: &mut impl Rng) -> Vec3 {
+    let unit_sphere = UnitSphere.sample(rng);
     Vec3::from_array(unit_sphere)
 }
 
-pub fn random_unit_hemisphere(normal: Vec3) -> Vec3 {
-    let vec = random_unit_vector();
+pub fn random_unit_hemisphere(normal: Vec3, rng: &mut impl Rng) -> Vec3 {
+    let vec = random_unit_vector(rng);
     if vec.dot(normal) > 0. {
         vec
     } else {
@@ -33,14 +31,13 @@ pub fn random_unit_hemisphere(normal: Vec3) -> Vec3 {
     }
 }
 
-pub fn random_in_unit_disc() -> Vec2 {
-    let mut rng = thread_rng();
-    let unit_disc = UnitDisc.sample(&mut rng);
+pub fn random_in_unit_disc(rng: &mut impl Rng) -> Vec2 {
+    let unit_disc = UnitDisc.sample(rng);
     Vec2::from_array(unit_disc)
 }
 
-pub fn random_in_range(range: Range<f64>) -> Vec3 {
-    let mut rng = thread_rng();
+pub fn random_in_range(range: Range<f64>, rng: &mut impl Rng) -> Vec3 {
+    // let mut rng = thread_rng();
 
     // let arr: [f64; 3] = rng.gen();
     // Vec3::from_array(rng.gen())

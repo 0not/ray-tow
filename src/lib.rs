@@ -1,7 +1,10 @@
 pub mod camera;
+pub mod hit_record;
 pub mod material;
 pub mod raw_image_buffer;
 pub mod ray;
+pub mod shapes;
+pub mod utils;
 pub mod vectors;
 
 // pub use camera::Camera;

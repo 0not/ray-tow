@@ -1,8 +1,10 @@
 use itertools::iproduct;
 use rand::{Rng, SeedableRng};
+use ray_tow::camera::Camera;
 use ray_tow::material::Material;
+use ray_tow::shapes::{sphere::Sphere, Shape};
 use ray_tow::vectors::{random_in_range, random_unit_vector};
-use ray_tow::{camera::Camera, ray::Shape, ray::Sphere, Vec3};
+use ray_tow::{utils, Vec3};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Setup world
@@ -30,11 +32,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if (center - Vec3::new(4., 0.2, 0.)).length() > 0.9 {
             let mat = if choose_mat < 0.8 {
                 // diffuse
-                let albedo = random_unit_vector() * random_unit_vector();
+                let albedo = random_unit_vector(&mut rng) * random_unit_vector(&mut rng);
                 Material::Lambertian { albedo }
             } else if choose_mat < 0.95 {
                 // metal
-                let albedo = random_in_range(0.5..1.);
+                let albedo = random_in_range(0.5..1., &mut rng);
                 let fuzz = rng.gen_range(0.0..0.5);
                 Material::Metal { albedo, fuzz }
             } else {
@@ -78,7 +80,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let camera = Camera::init()
         .position(Vec3::new(13., 2., 3.))
         .look_at(Vec3::new(0., 0., 0.))
-        .up(Vec3::new(0., 1., 0.))
+        .up(Vec3::Y)
         // .aspect_ratio(36e-3 / 24e-3)
         .sensor_dimensions(36e-3, 24e-3)
         .image_width(400)
@@ -96,10 +98,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let render_buffer = camera.render(&world);
 
     // Get timestamp for keeping a record of the ray tracer progress
-    let timestamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or(std::time::Duration::from_secs(0))
-        .as_secs();
+    let timestamp = utils::timestamp();
 
     render_buffer.save(format!("output/render-final-scene-1-{timestamp}.png"))?;
     render_buffer.save("output/latest.png")?;

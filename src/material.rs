@@ -1,6 +1,10 @@
+use crate::hit_record::{FaceSide, HitRecord};
+use crate::ray::Ray;
 use crate::vectors::{random_unit_vector, refract};
-use crate::{ray::HitRecord, ray::Ray, Color, Vec3};
+use crate::{Color, Vec3};
+use rand::thread_rng;
 
+#[non_exhaustive]
 #[derive(Clone)]
 pub enum Material {
     Lambertian { albedo: Color },
@@ -11,9 +15,10 @@ pub enum Material {
 // TODO: Should this be a trait?
 impl Material {
     pub fn scatter(&self, ray: &Ray, hit_record: &HitRecord) -> Option<(Ray, Color)> {
+        let mut rng = thread_rng();
         match self {
             Material::Lambertian { albedo } => {
-                let mut scatter_direction = hit_record.normal + random_unit_vector();
+                let mut scatter_direction = hit_record.normal + random_unit_vector(&mut rng);
 
                 // Don't scatter near zero
                 if scatter_direction.abs_diff_eq(Vec3::ZERO, 1e-8) {
@@ -26,8 +31,10 @@ impl Material {
             }
             Material::Metal { albedo, fuzz } => {
                 let reflected = ray.direction.reflect(hit_record.normal).normalize();
-                let scattered =
-                    Ray::new(hit_record.point, reflected + *fuzz * random_unit_vector());
+                let scattered = Ray::new(
+                    hit_record.point,
+                    reflected + *fuzz * random_unit_vector(&mut rng),
+                );
                 let attenuation = *albedo;
                 if scattered.direction.dot(hit_record.normal) > 0. {
                     Some((scattered, attenuation))
@@ -39,7 +46,7 @@ impl Material {
                 index_of_refraction,
             } => {
                 // TODO: Support other external materials besides air
-                let refraction_ratio = if hit_record.face_side == crate::ray::FaceSide::Front {
+                let refraction_ratio = if hit_record.face_side == FaceSide::Front {
                     1.0 / *index_of_refraction
                 } else {
                     *index_of_refraction
@@ -54,7 +61,8 @@ impl Material {
 
                 // Cannot refract
                 let direction = if refraction_ratio * sin_theta > 1.0
-                    || reflectance(cos_theta, refraction_ratio) > random_unit_vector().x.abs()
+                    || reflectance(cos_theta, refraction_ratio)
+                        > random_unit_vector(&mut rng).x.abs()
                 {
                     unit_direction.reflect(hit_record.normal)
                 } else {
