@@ -1,4 +1,4 @@
-use std::ops::Range;
+use core::ops::Range;
 
 use crate::hit_record::{FaceSide, HitRecord, Hittable};
 use crate::material::Material;

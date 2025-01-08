@@ -1,16 +1,21 @@
-use indicatif::ParallelProgressIterator;
-use itertools::iproduct;
 use rand::thread_rng;
-use rayon::prelude::*;
 
 use crate::hit_record::Hittable;
-use crate::raw_image_buffer::RawImageBuffer;
 use crate::ray::Ray;
 use crate::vectors::{random_in_unit_disc, sample_square};
 use crate::{Color, Vec3};
 
+#[cfg(feature = "std")]
+use {
+    crate::raw_image_buffer::RawImageBuffer, indicatif::ParallelProgressIterator,
+    itertools::iproduct, rayon::prelude::*,
+};
+
 #[derive(Default, Debug)]
-pub struct Camera {
+pub struct Camera<'a, T>
+where
+    T: Hittable + Sync,
+{
     pub position: Vec3,
     // pub direction: Vec3,
     // pub up: Vec3,
@@ -30,82 +35,69 @@ pub struct Camera {
     defocus_disk_v: Vec3,
     // defocus_angle: f64,
     f_stop: Option<f64>,
+    world: Option<&'a T>,
+    curr_pixel: (u32, u32),
 }
 
-impl Camera {
-    pub fn init() -> CameraBuilder {
+impl<'a, T> Camera<'a, T>
+where
+    T: Hittable + Sync,
+{
+    pub fn init() -> CameraBuilder<'a, T> {
         CameraBuilder::default()
     }
 
-    pub fn render<T>(&self, world: &T) -> RawImageBuffer
-    where
-        T: Hittable + std::marker::Sync,
-    {
-        // Create a progress bar for looping over pixels
-        // let pb = ProgressBar::new((self.image_width * self.image_height) as u64);
+    pub fn with_world(&self, world: &'a T) -> Camera<'a, T> {
+        Camera {
+            world: Some(world),
+            ..*self
+        }
+    }
 
+    #[cfg(feature = "std")]
+    pub fn render_to_buffer(&self) -> RawImageBuffer {
         let mut rawbuf = RawImageBuffer::new(self.image_width, self.image_height);
 
-        // for y in 0..self.image_height {
-        //     for x in 0..self.image_width {
-        //         let mut pixel_color = Color::ZERO;
-
-        //         for _sample_n in 0..self.samples_per_pixel {
-        //             let ray = self.create_ray(x, y);
-        //             pixel_color += Camera::ray_color(&ray, self.max_depth, world);
-        //         }
-
-        //         rawbuf.push_color(pixel_color / self.samples_per_pixel as f64);
-
-        //         pb.inc(1);
-        //     }
-        // }
-        let xys: Vec<_> = iproduct!(0..self.image_height, 0..self.image_width).collect();
-        let colors: Vec<Color> = xys
+        let xys: std::vec::Vec<_> = iproduct!(0..self.image_height, 0..self.image_width).collect();
+        let colors: std::vec::Vec<Color> = xys
             .par_iter()
             .progress_count(xys.len() as u64)
-            .map(|(y, x)| {
-                let mut pixel_color = Color::ZERO;
-
-                for _sample_n in 0..self.samples_per_pixel {
-                    let ray = self.create_ray(*x, *y);
-                    pixel_color += Camera::ray_color(&ray, self.max_depth, world);
-                }
-
-                pixel_color / self.samples_per_pixel as f64
-            })
+            .map(|(y, x)| self.render_pixel(*x, *y))
             .collect();
 
         colors
             .into_iter()
             .for_each(|color| rawbuf.push_color(color));
-        // pb.inc(1);
-        // Finish progress bar
-        // pb.finish();
-
-        // println!(
-        //     "Rendered {}x{} pixels in {:?}",
-        //     self.image_width,
-        //     self.image_height,
-        //     pb.elapsed()
-        // );
 
         rawbuf
     }
 
-    fn ray_color<T>(ray: &Ray, depth: u32, world: &T) -> Color
-    where
-        T: Hittable + std::marker::Sync,
-    {
+    #[inline]
+    pub fn render_pixel(&self, x: u32, y: u32) -> Color {
+        let mut pixel_color = Color::ZERO;
+
+        for _sample_n in 0..self.samples_per_pixel {
+            let ray = self.create_ray(x, y);
+            pixel_color += self.ray_color(&ray, self.max_depth);
+        }
+
+        pixel_color / self.samples_per_pixel as f64
+    }
+
+    fn ray_color(&self, ray: &Ray, depth: u32) -> Color {
         if depth == 0 {
             return Color::ZERO;
         }
 
-        if let Some(hit_record) = world.hit(ray, 0.001..f64::INFINITY) {
+        if let Some(hit_record) = self
+            .world
+            .expect("world is Some")
+            .hit(ray, 0.001..f64::INFINITY)
+        {
             if let Some((scattered_ray, attenuation)) =
                 hit_record.material.scatter(ray, &hit_record)
             {
-                attenuation * Camera::ray_color(&scattered_ray, depth - 1, world)
+                attenuation * self.ray_color(&scattered_ray, depth - 1)
             } else {
                 Color::ZERO
             }
@@ -137,7 +129,34 @@ impl Camera {
     }
 }
 
-pub struct CameraBuilder {
+impl<T> Iterator for Camera<'_, T>
+where
+    T: Hittable + Sync,
+{
+    type Item = Color;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (x, y) = self.curr_pixel;
+        if x >= self.image_width || y >= self.image_height {
+            return None;
+        }
+
+        let color = self.render_pixel(x, y);
+
+        self.curr_pixel = if x + 1 < self.image_width {
+            (x + 1, y)
+        } else {
+            (0, y + 1)
+        };
+
+        Some(color)
+    }
+}
+
+pub struct CameraBuilder<'a, T>
+where
+    T: Hittable + Sync,
+{
     image_width: u32,
     aspect_ratio: f64,
     position: Vec3,
@@ -153,9 +172,13 @@ pub struct CameraBuilder {
     f_stop: Option<f64>,
     sensor_width: f64,
     sensor_height: f64,
+    world: Option<&'a T>,
 }
 
-impl Default for CameraBuilder {
+impl<T> Default for CameraBuilder<'_, T>
+where
+    T: Hittable + Sync,
+{
     fn default() -> Self {
         Self {
             image_width: 400,
@@ -171,10 +194,14 @@ impl Default for CameraBuilder {
             f_stop: None,
             sensor_width: 36e-3,
             sensor_height: 24e-3,
+            world: None,
         }
     }
 }
-impl CameraBuilder {
+impl<'a, T> CameraBuilder<'a, T>
+where
+    T: Hittable + Sync,
+{
     pub fn image_width(mut self, image_width: u32) -> Self {
         self.image_width = image_width;
         self
@@ -237,7 +264,12 @@ impl CameraBuilder {
         self
     }
 
-    pub fn build(self) -> Camera {
+    pub fn world(mut self, world: &'a T) -> Self {
+        self.world = Some(world);
+        self
+    }
+
+    pub fn build(self) -> Camera<'a, T> {
         // Calculate height
         let image_height = (self.image_width as f64 / self.aspect_ratio) as u32;
         let image_height = if image_height < 1 { 1 } else { image_height };
@@ -307,6 +339,8 @@ impl CameraBuilder {
             defocus_disk_v,
             // defocus_angle: self.defocus_angle,
             f_stop: self.f_stop,
+            world: self.world,
+            curr_pixel: (0, 0),
         }
     }
 }

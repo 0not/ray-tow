@@ -1,4 +1,4 @@
-use std::ops::Range;
+use core::ops::Range;
 
 use crate::material::Material;
 use crate::ray::Ray;
@@ -61,7 +61,8 @@ pub trait Hittable {
     fn hit(&self, ray: &Ray, interval: Range<f64>) -> Option<HitRecord>;
 }
 
-impl<T> Hittable for Vec<T>
+#[cfg(feature = "std")]
+impl<T> Hittable for std::vec::Vec<T>
 where
     T: Hittable + Sync,
 {
@@ -73,6 +74,30 @@ where
             if let Some(record) = hittable.hit(ray, interval.start..closest_so_far) {
                 closest_so_far = record.t;
                 hit_record = Some(record);
+            }
+        }
+
+        hit_record
+    }
+}
+
+impl<T> Hittable for [Option<T>; 488]
+where
+    T: Hittable + Sync,
+{
+    fn hit(&self, ray: &Ray, interval: Range<f64>) -> Option<HitRecord> {
+        let mut closest_so_far = interval.end;
+        let mut hit_record = None;
+
+        for hittable in self.iter() {
+            match hittable {
+                None => continue,
+                Some(hittable) => {
+                    if let Some(record) = hittable.hit(ray, interval.start..closest_so_far) {
+                        closest_so_far = record.t;
+                        hit_record = Some(record);
+                    }
+                }
             }
         }
 

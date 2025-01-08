@@ -1,4 +1,4 @@
-use std::ops::Range;
+use core::ops::Range;
 
 use crate::{Vec2, Vec3};
 use rand::distributions::Standard;

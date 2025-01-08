@@ -1,18 +1,20 @@
 use crate::Color;
 
 #[derive(Debug)]
+#[cfg(feature = "std")]
 pub struct RawImageBuffer {
     pub width: u32,
     pub height: u32,
-    pub buf: Vec<u8>,
+    pub buf: std::vec::Vec<u8>,
 }
 
+#[cfg(feature = "std")]
 impl RawImageBuffer {
     pub fn new(width: u32, height: u32) -> Self {
         Self {
             width,
             height,
-            buf: Vec::with_capacity((width * height * 3) as usize),
+            buf: std::vec::Vec::with_capacity((width * height * 3) as usize),
         }
     }
 

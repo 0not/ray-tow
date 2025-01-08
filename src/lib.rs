@@ -1,3 +1,8 @@
+#![no_std]
+
+#[cfg(feature = "std")]
+extern crate std;
+
 pub mod camera;
 pub mod hit_record;
 pub mod material;

@@ -1,6 +1,6 @@
 pub mod sphere;
 
-use std::ops::Range;
+use core::ops::Range;
 
 use crate::hit_record::{HitRecord, Hittable};
 use crate::ray::Ray;
