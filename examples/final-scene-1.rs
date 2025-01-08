@@ -94,8 +94,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .focal_length(60e-3)
         .build();
 
-    println!("{:?}", camera);
-    let render_buffer = camera.render(&world);
+    let render_buffer = camera.with_world(&world).render_to_buffer();
 
     // Get timestamp for keeping a record of the ray tracer progress
     let timestamp = utils::timestamp();
