@@ -1,8 +1,9 @@
 use crate::hit_record::{FaceSide, HitRecord};
 use crate::ray::Ray;
+use crate::utils::{abs, powi, sqrt};
 use crate::vectors::{random_unit_vector, refract};
 use crate::{Color, Vec3};
-use rand::thread_rng;
+use rand::Rng;
 
 #[non_exhaustive]
 #[derive(Clone)]
@@ -14,11 +15,15 @@ pub enum Material {
 
 // TODO: Should this be a trait?
 impl Material {
-    pub fn scatter(&self, ray: &Ray, hit_record: &HitRecord) -> Option<(Ray, Color)> {
-        let mut rng = thread_rng();
+    pub fn scatter(
+        &self,
+        ray: &Ray,
+        hit_record: &HitRecord,
+        rng: &mut impl Rng,
+    ) -> Option<(Ray, Color)> {
         match self {
             Material::Lambertian { albedo } => {
-                let mut scatter_direction = hit_record.normal + random_unit_vector(&mut rng);
+                let mut scatter_direction = hit_record.normal + random_unit_vector(rng);
 
                 // Don't scatter near zero
                 if scatter_direction.abs_diff_eq(Vec3::ZERO, 1e-8) {
@@ -33,7 +38,7 @@ impl Material {
                 let reflected = ray.direction.reflect(hit_record.normal).normalize();
                 let scattered = Ray::new(
                     hit_record.point,
-                    reflected + *fuzz * random_unit_vector(&mut rng),
+                    reflected + *fuzz * random_unit_vector(rng),
                 );
                 let attenuation = *albedo;
                 if scattered.direction.dot(hit_record.normal) > 0. {
@@ -57,12 +62,11 @@ impl Material {
 
                 // Account for total internal reflection
                 let cos_theta = (-unit_direction).dot(hit_record.normal).min(1.0);
-                let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
+                let sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
                 // Cannot refract
                 let direction = if refraction_ratio * sin_theta > 1.0
-                    || reflectance(cos_theta, refraction_ratio)
-                        > random_unit_vector(&mut rng).x.abs()
+                    || reflectance(cos_theta, refraction_ratio) > abs(random_unit_vector(rng).x)
                 {
                     unit_direction.reflect(hit_record.normal)
                 } else {
@@ -80,6 +84,6 @@ impl Material {
 
 fn reflectance(cosine: f64, index_of_refraction: f64) -> f64 {
     // Use Schlick's approximation for reflectance
-    let r0 = ((1. - index_of_refraction) / (1. + index_of_refraction)).powi(2);
-    r0 + (1. - r0) * (1. - cosine).powi(5)
+    let r0 = (1. - index_of_refraction) / powi(1. + index_of_refraction, 2);
+    r0 + (1. - r0) * powi(1. - cosine, 5)
 }

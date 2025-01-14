@@ -1,5 +1,5 @@
 use itertools::iproduct;
-use rand::{Rng, SeedableRng};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use ray_tow::camera::Camera;
 use ray_tow::material::Material;
 use ray_tow::shapes::{sphere::Sphere, Shape};
@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Setup world
     // Use a seed for reproducibility
     let seed = 42;
-    let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+    let mut rng = StdRng::seed_from_u64(seed);
     let mut world: Vec<Shape> = vec![];
     let mat_ground = Material::Lambertian {
         albedo: Vec3::new(0.5, 0.5, 0.5),

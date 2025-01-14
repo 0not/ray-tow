@@ -1,18 +1,22 @@
 #![no_std]
+#![no_main]
+
+extern crate panic_halt;
 
 use itertools::iproduct;
-use rand::{Rng, SeedableRng};
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 use ray_tow::camera::Camera;
 use ray_tow::material::Material;
 use ray_tow::shapes::{sphere::Sphere, Shape};
 use ray_tow::vectors::{random_in_range, random_unit_vector};
 use ray_tow::Vec3;
 
+#[no_mangle]
 fn main() {
     // Setup world
     // Use a seed for reproducibility
     let seed = 42;
-    let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+    let mut rng = SmallRng::seed_from_u64(seed);
     // 488 = 1 + 22 * 22 + 3
     let mut world: [Option<Shape>; 488] = [const { None }; 488];
     let mat_ground = Material::Lambertian {
@@ -102,5 +106,5 @@ fn main() {
         .focal_length(60e-3)
         .build();
 
-    camera.with_world(&world).for_each(|pixel| {});
+    camera.with_world(&world).for_each(|_pixel| {});
 }

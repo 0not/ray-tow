@@ -1,4 +1,4 @@
-use rand::thread_rng;
+use rand::{rngs::SmallRng, Rng, RngCore, SeedableRng};
 
 use crate::hit_record::Hittable;
 use crate::ray::Ray;
@@ -76,15 +76,16 @@ where
     pub fn render_pixel(&self, x: u32, y: u32) -> Color {
         let mut pixel_color = Color::ZERO;
 
+        let mut rng = SmallRng::seed_from_u64(x as u64 * y as u64);
         for _sample_n in 0..self.samples_per_pixel {
-            let ray = self.create_ray(x, y);
-            pixel_color += self.ray_color(&ray, self.max_depth);
+            let ray = self.create_ray(x, y, &mut rng);
+            pixel_color += self.ray_color(&ray, self.max_depth, &mut rng);
         }
 
         pixel_color / self.samples_per_pixel as f64
     }
 
-    fn ray_color(&self, ray: &Ray, depth: u32) -> Color {
+    fn ray_color(&self, ray: &Ray, depth: u32, rng: &mut impl Rng) -> Color {
         if depth == 0 {
             return Color::ZERO;
         }
@@ -95,9 +96,9 @@ where
             .hit(ray, 0.001..f64::INFINITY)
         {
             if let Some((scattered_ray, attenuation)) =
-                hit_record.material.scatter(ray, &hit_record)
+                hit_record.material.scatter(ray, &hit_record, rng)
             {
-                attenuation * self.ray_color(&scattered_ray, depth - 1)
+                attenuation * self.ray_color(&scattered_ray, depth - 1, rng)
             } else {
                 Color::ZERO
             }
@@ -110,9 +111,8 @@ where
         }
     }
 
-    fn create_ray(&self, x: u32, y: u32) -> Ray {
-        let mut rng = thread_rng();
-        let offset = sample_square(&mut rng);
+    fn create_ray(&self, x: u32, y: u32, rng: &mut impl Rng) -> Ray {
+        let offset = sample_square(rng);
 
         let pixel_sample = self.pixel00_loc
             + (x as f64 + offset.x) * self.pixel_delta_u
@@ -121,7 +121,7 @@ where
         let origin = if self.f_stop.is_none() {
             self.position
         } else {
-            let defocus = random_in_unit_disc(&mut rng);
+            let defocus = random_in_unit_disc(rng);
             self.position + defocus.x * self.defocus_disk_u + defocus.y * self.defocus_disk_v
         };
         let direction = pixel_sample - origin;

@@ -3,6 +3,7 @@ use core::ops::Range;
 use crate::hit_record::{FaceSide, HitRecord, Hittable};
 use crate::material::Material;
 use crate::ray::Ray;
+use crate::utils::sqrt;
 use crate::Vec3;
 
 pub struct Sphere {
@@ -33,7 +34,7 @@ impl Hittable for Sphere {
             return None;
         }
 
-        let sqrtd = discriminant.sqrt();
+        let sqrtd = sqrt(discriminant);
 
         // Find the nearest root that lies in the acceptable range
         let mut root = (half_b - sqrtd) / a;

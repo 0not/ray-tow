@@ -1,5 +1,6 @@
 use core::ops::Range;
 
+use crate::utils::{abs, sqrt};
 use crate::{Vec2, Vec3};
 use rand::distributions::Standard;
 use rand::Rng;
@@ -8,7 +9,7 @@ use rand_distr::{Distribution, UnitDisc, UnitSphere};
 pub fn refract(uv: Vec3, normal: Vec3, n1_over_n2: f64) -> Vec3 {
     let cos_theta = (-uv).dot(normal).min(1.);
     let r_out_perp = n1_over_n2 * (uv + cos_theta * normal);
-    let r_out_parallel = -((1.0 - r_out_perp.length_squared()).abs().sqrt()) * normal;
+    let r_out_parallel = -sqrt(abs(1.0 - r_out_perp.length_squared())) * normal;
     r_out_perp + r_out_parallel
 }
 
