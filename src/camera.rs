@@ -133,7 +133,7 @@ impl<T> Iterator for Camera<'_, T>
 where
     T: Hittable + Sync,
 {
-    type Item = Color;
+    type Item = (u32, u32, Color);
 
     fn next(&mut self) -> Option<Self::Item> {
         let (x, y) = self.curr_pixel;
@@ -149,7 +149,7 @@ where
             (0, y + 1)
         };
 
-        Some(color)
+        Some((x, y, color))
     }
 }
 
