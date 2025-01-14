@@ -81,7 +81,17 @@ where
     }
 }
 
-impl<T> Hittable for [Option<T>; 488]
+impl<T> Hittable for Option<T>
+where
+    T: Hittable + Sync,
+{
+    fn hit(&self, ray: &Ray, interval: Range<f64>) -> Option<HitRecord> {
+        self.as_ref()
+            .and_then(|hittable| hittable.hit(ray, interval))
+    }
+}
+
+impl<T, const N: usize> Hittable for [T; N]
 where
     T: Hittable + Sync,
 {
@@ -90,14 +100,9 @@ where
         let mut hit_record = None;
 
         for hittable in self.iter() {
-            match hittable {
-                None => continue,
-                Some(hittable) => {
-                    if let Some(record) = hittable.hit(ray, interval.start..closest_so_far) {
-                        closest_so_far = record.t;
-                        hit_record = Some(record);
-                    }
-                }
+            if let Some(record) = hittable.hit(ray, interval.start..closest_so_far) {
+                closest_so_far = record.t;
+                hit_record = Some(record);
             }
         }
 
